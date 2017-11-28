@@ -25,28 +25,11 @@ import twitter4j.TwitterFactory
 import twitter4j.Twitter
 import twitter4j.conf.ConfigurationBuilder
 
-case class UserSignup
-(
-  name: String,
-  email: String,
-  password: String
-)
-
-case class UserLogin
-(
-  name: String,
-  password: String
-)
-
-case class User
-(
-  name: String,
-  email: String,
-  password: String,
-  twitter: String
-)
-
+case class UserSignup(name: String, email: String, password: String)
+case class UserLogin(name: String, password: String)
 case class Tweet(recipient: String, message: String)
+case class UserUpdate(name: String, twitterId: Option[String] = None, facebookId: Option[String] = None, whatsupId: Option[String] = None)
+
 
 // collect your json format instances into a support trait:
 trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
@@ -54,6 +37,7 @@ trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
   implicit val userSignupFormat = jsonFormat3(UserSignup)
   implicit val userLoginFormat = jsonFormat2(UserLogin)
   implicit val tweetFormat = jsonFormat2(Tweet)
+  implicit val userUpdate = jsonFormat4(UserUpdate)
 }
 
 
@@ -66,6 +50,8 @@ object RESTServer extends Directives with JsonSupport {
     implicit val materializer = ActorMaterializer()
     implicit val executionContext = system.dispatcher // needed for the future flatMap/onComplete in the end
     val twitter = new TwiterApi()
+    val db = new Database()
+    db.init()
 
     val route = {
       path("hello") {
@@ -97,7 +83,9 @@ object RESTServer extends Directives with JsonSupport {
               entity(as[UserSignup]) { signup =>
                 complete {
                   println("### Signup: " + signup)
-                  // ... write order to DB
+                  db.userInsert(new User(id = 0, name = signup.name, password = signup.password, email = Some(signup.email)))
+                  val users = db.usersGet()
+                  println("### " + users)
                   "Signed up: " + signup
                 }
               }
@@ -112,13 +100,29 @@ object RESTServer extends Directives with JsonSupport {
               entity(as[UserLogin]) { login =>
                 complete {
                   println("### Login: " + login)
-                  // ... write order to DB
-                  s"Logged In as ${login.name}"
+                  val loginResult = db.login(login.name,login.password)
+                  s"Logged In as ${login.name} didlogin: $loginResult "
                 }
               }
             }
           }
+        } ~
+      path("update") {
+        post {
+          // decompress gzipped or deflated requests if required
+          decodeRequest {
+            // unmarshal with in-scope unmarshaller
+            entity(as[UserUpdate]) { uu =>
+              complete {
+                println("### UserUpdate: " + uu)
+                val loginResult = db.updateUser(uu)
+                s"updating: $uu"
+              }
+            }
+          }
         }
+      }
+
     }
 
 
@@ -128,9 +132,11 @@ object RESTServer extends Directives with JsonSupport {
     StdIn.readLine() // let it run until user presses return
     bindingFuture
       .flatMap(_.unbind()) // trigger unbinding from the port
-      .onComplete(_ => system.terminate()) // and shutdown when done
+      .onComplete{_ =>
+      db.shutdown()
+      system.terminate()
+    } // and shutdown when done
   }
-
 
 
 }
