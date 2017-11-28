@@ -145,7 +145,7 @@ object RESTServer extends Directives with JsonSupport {
     }
 
 
-    val bindingFuture = Http().bindAndHandle(route, "127.0.0.1", 9999)
+    val bindingFuture = Http().bindAndHandle(route, "0.0.0.0", 9999)
 
     println(s"Server online RETURN to stop...")
     StdIn.readLine() // let it run until user presses return
