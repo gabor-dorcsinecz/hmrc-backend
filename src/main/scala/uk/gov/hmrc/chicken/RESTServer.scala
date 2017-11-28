@@ -46,11 +46,14 @@ case class User
   twitter: String
 )
 
+case class Tweet(recipient: String, message: String)
+
 // collect your json format instances into a support trait:
 trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
   //implicit val itemFormat = jsonFormat4(User)
   implicit val userSignupFormat = jsonFormat3(UserSignup)
   implicit val userLoginFormat = jsonFormat2(UserLogin)
+  implicit val tweetFormat = jsonFormat2(Tweet)
 }
 
 
@@ -71,10 +74,19 @@ object RESTServer extends Directives with JsonSupport {
         }
       } ~
         path("twitter") {
-          get {
-            val msg = "Hello from Someone"
-            twitter.post(msg)
-            complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, "You posted: " + msg))
+          post {
+            entity(as[Tweet]) { tweet =>
+              twitter.post(tweet.message)
+              complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, "You posted: " + tweet.message))
+            }
+          }
+        } ~
+        path("dm") {
+          post {
+            entity(as[Tweet]) { tweet =>
+              twitter.dm(tweet.recipient, tweet.message)
+              complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, s"You posted ${tweet.message} to ${tweet.recipient}"))
+            }
           }
         } ~
         path("signup") {
@@ -110,7 +122,7 @@ object RESTServer extends Directives with JsonSupport {
     }
 
 
-    val bindingFuture = Http().bindAndHandle(route, "192.168.160.139", 9999)
+    val bindingFuture = Http().bindAndHandle(route, "127.0.0.1", 9999)
 
     println(s"Server online RETURN to stop...")
     StdIn.readLine() // let it run until user presses return

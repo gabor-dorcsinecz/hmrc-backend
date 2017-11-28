@@ -15,8 +15,12 @@ class TwiterApi {
   val twtr = tf.getInstance()
 
   def post(message: String): Unit = {
-    println("twitterPost: " + message)
     twtr.updateStatus(message)
+  }
+
+
+  def dm(recipient: String, message: String): Unit = {
+    twtr.sendDirectMessage(recipient, message)
   }
 
 }
