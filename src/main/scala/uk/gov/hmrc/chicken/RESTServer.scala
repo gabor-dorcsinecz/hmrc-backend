@@ -48,12 +48,15 @@ case class User
 
 case class Tweet(recipient: String, message: String)
 
+case class Follower(screenName: String)
+
 // collect your json format instances into a support trait:
 trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
   //implicit val itemFormat = jsonFormat4(User)
   implicit val userSignupFormat = jsonFormat3(UserSignup)
   implicit val userLoginFormat = jsonFormat2(UserLogin)
   implicit val tweetFormat = jsonFormat2(Tweet)
+  implicit val followerFormat = jsonFormat1(Follower)
 }
 
 
@@ -86,6 +89,22 @@ object RESTServer extends Directives with JsonSupport {
             entity(as[Tweet]) { tweet =>
               twitter.dm(tweet.recipient, tweet.message)
               complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, s"You posted ${tweet.message} to ${tweet.recipient}"))
+            }
+          }
+        } ~
+        path("followers") {
+          post {
+            entity(as[Follower]) { follower =>
+              val followers = twitter.followers
+
+              var found = false
+
+              for (i <- 0 until followers.size()) {
+                if (followers.get(i).getScreenName == follower.screenName) found = true
+              }
+
+              if (found) complete(StatusCodes.OK)
+              else complete(StatusCodes.NotFound)
             }
           }
         } ~

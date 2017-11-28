@@ -1,9 +1,11 @@
 package uk.gov.hmrc.chicken
 
-import twitter4j.TwitterFactory
 import twitter4j.conf.ConfigurationBuilder
+import twitter4j.{IDs, PagableResponseList, TwitterFactory}
 
 class TwiterApi {
+
+  val twitterHandle = "HMRChicken"
 
   val cb = new ConfigurationBuilder()
   cb.setDebugEnabled(true)
@@ -18,9 +20,11 @@ class TwiterApi {
     twtr.updateStatus(message)
   }
 
-
   def dm(recipient: String, message: String): Unit = {
     twtr.sendDirectMessage(recipient, message)
   }
+
+  def followers: PagableResponseList[twitter4j.User] = twtr.getFollowersList(twitterHandle, -1)
+//  def followers: IDs = twtr.getFollowersIDs(twitterHandle, -1)
 
 }
